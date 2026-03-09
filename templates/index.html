@@ -1,418 +1,720 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Riya AI</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
+<title>Ashly AI</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
 <style>
+  :root {
+    --ink: #1a1a18;
+    --ink-light: #4a4a44;
+    --ink-ghost: #9a9a90;
+    --cream: #faf9f6;
+    --surface: #ffffff;
+    --border: #ebebе6;
+    --accent: #b5935a;
+    --accent-soft: #f5efe4;
+    --user-bg: #1a1a18;
+    --user-fg: #faf9f6;
+    --sidebar-w: 272px;
+  }
 
-.chat-bubble{
-max-width:80%;
-padding:14px;
-border-radius:16px;
-white-space:pre-wrap;
-}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-@media (max-width:768px){
-.chat-bubble{
-max-width:90%;
-}
-}
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+  }
 
-.user{
-background:#7c3aed;
-color:white;
-margin-left:auto;
-}
+  /* ── SIDEBAR ─────────────────────────── */
+  #sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid #e8e8e2;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    z-index: 50;
+  }
 
-.assistant{
-background:#f3f4f6;
-}
+  .sidebar-header {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid #e8e8e2;
+  }
 
-.typing{
-opacity:.6;
-font-style:italic;
-}
+  .brand {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
 
-.sidebar-mobile{
-position:fixed;
-left:-100%;
-top:0;
-height:100%;
-width:260px;
-z-index:50;
-transition:0.3s;
-}
+  .brand-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    margin-bottom: 1px;
+  }
 
-.sidebar-mobile.open{
-left:0;
-}
+  .search-wrap {
+    padding: 16px 16px 8px;
+  }
 
-.overlay{
-position:fixed;
-top:0;
-left:0;
-right:0;
-bottom:0;
-background:rgba(0,0,0,0.4);
-z-index:40;
-display:none;
-}
+  #searchChat {
+    width: 100%;
+    border: 1px solid #e8e8e2;
+    background: var(--cream);
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #searchChat:focus { border-color: var(--accent); }
+  #searchChat::placeholder { color: var(--ink-ghost); }
 
-.overlay.show{
-display:block;
-}
+  .conv-section-label {
+    padding: 8px 20px 4px;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--ink-ghost);
+    font-weight: 500;
+  }
 
+  #conversationList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 10px 12px;
+  }
+
+  #conversationList::-webkit-scrollbar { width: 3px; }
+  #conversationList::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
+
+  .conv-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+    gap: 8px;
+  }
+  .conv-item:hover { background: var(--cream); }
+  .conv-item:hover .conv-del { opacity: 1; }
+
+  .conv-title {
+    font-size: 13px;
+    color: var(--ink-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    font-weight: 400;
+  }
+
+  .conv-del {
+    opacity: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #c0bdb5;
+    font-size: 11px;
+    transition: opacity 0.15s, color 0.15s;
+    padding: 2px;
+  }
+  .conv-del:hover { color: #c0392b; }
+
+  .sidebar-footer {
+    padding: 16px 16px;
+    border-top: 1px solid #e8e8e2;
+  }
+
+  #newChatBtn {
+    width: 100%;
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    border-radius: 10px;
+    padding: 11px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.1px;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+  #newChatBtn:hover { background: #2d2d28; }
+  #newChatBtn:active { transform: scale(0.98); }
+
+  /* ── MAIN ────────────────────────────── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--cream);
+  }
+
+  /* HEADER */
+  #header {
+    padding: 18px 28px;
+    background: var(--cream);
+    border-bottom: 1px solid #e8e8e2;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  #menuBtn {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--ink-light);
+    font-size: 16px;
+    padding: 4px;
+  }
+
+  .header-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 17px;
+    color: var(--ink);
+    letter-spacing: -0.2px;
+  }
+
+  .header-status {
+    font-size: 12px;
+    color: var(--ink-ghost);
+    font-weight: 300;
+    margin-left: 2px;
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #5ab58a;
+    margin-right: 5px;
+    position: relative;
+    top: -1px;
+  }
+
+  /* CHAT AREA */
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 36px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scroll-behavior: smooth;
+  }
+
+  #chat::-webkit-scrollbar { width: 4px; }
+  #chat::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
+
+  /* EMPTY STATE */
+  #emptyState {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .empty-icon {
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 48px;
+    color: var(--accent);
+    margin-bottom: 16px;
+    opacity: 0.8;
+  }
+
+  .empty-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    color: var(--ink);
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+
+  .empty-sub {
+    font-size: 14px;
+    color: var(--ink-ghost);
+    font-weight: 300;
+    max-width: 280px;
+    line-height: 1.6;
+  }
+
+  .suggestions {
+    margin-top: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-width: 420px;
+  }
+
+  .suggestion-chip {
+    padding: 8px 16px;
+    border: 1px solid #e0ddd6;
+    border-radius: 100px;
+    font-size: 13px;
+    color: var(--ink-light);
+    cursor: pointer;
+    background: white;
+    transition: all 0.15s;
+    font-weight: 400;
+  }
+  .suggestion-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* BUBBLES */
+  .msg-row {
+    display: flex;
+    flex-direction: column;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .msg-row.user { align-items: flex-end; }
+  .msg-row.assistant { align-items: flex-start; }
+
+  .bubble {
+    max-width: 70%;
+    padding: 14px 18px;
+    border-radius: 18px;
+    font-size: 14.5px;
+    line-height: 1.65;
+    font-weight: 400;
+  }
+
+  .bubble.user {
+    background: var(--user-bg);
+    color: var(--user-fg);
+    border-bottom-right-radius: 5px;
+  }
+
+  .bubble.assistant {
+    background: white;
+    color: var(--ink);
+    border: 1px solid #eeece8;
+    border-bottom-left-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .bubble p { margin-bottom: 10px; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble code {
+    background: rgba(0,0,0,0.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .bubble.user code { background: rgba(255,255,255,0.12); }
+  .bubble pre {
+    background: rgba(0,0,0,0.05);
+    padding: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    margin: 8px 0;
+  }
+
+  .msg-time {
+    font-size: 11px;
+    color: var(--ink-ghost);
+    margin-top: 5px;
+    padding: 0 4px;
+  }
+
+  /* TYPING */
+  #typingRow {
+    display: none;
+    align-items: flex-start;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .typing-bubble {
+    background: white;
+    border: 1px solid #eeece8;
+    border-radius: 18px;
+    border-bottom-left-radius: 5px;
+    padding: 14px 18px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ink-ghost);
+    animation: typingBounce 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typingBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  /* INPUT */
+  #inputArea {
+    padding: 16px 24px 20px;
+    background: var(--cream);
+  }
+
+  #chatForm {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    background: white;
+    border: 1px solid #e0ddd6;
+    border-radius: 16px;
+    padding: 10px 10px 10px 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  #chatForm:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 2px 16px rgba(181,147,90,0.12);
+  }
+
+  #input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--ink);
+    background: transparent;
+    resize: none;
+    min-height: 24px;
+    max-height: 120px;
+    line-height: 1.5;
+    padding: 2px 0;
+  }
+  #input::placeholder { color: var(--ink-ghost); }
+
+  #sendBtn {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--ink);
+    border: none;
+    cursor: pointer;
+    color: white;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.1s;
+  }
+  #sendBtn:hover { background: #333; }
+  #sendBtn:active { transform: scale(0.93); }
+  #sendBtn:disabled { background: #ccc; cursor: default; }
+
+  /* MOBILE */
+  @media (max-width: 768px) {
+    #sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      transform: translateX(-100%);
+    }
+    #sidebar.open { transform: translateX(0); }
+    #menuBtn { display: block; }
+    .bubble { max-width: 88%; }
+    #chat { padding: 20px 16px; }
+    #inputArea { padding: 12px 16px 16px; }
+    #header { padding: 14px 16px; }
+  }
+
+  /* OVERLAY */
+  #overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 40;
+    backdrop-filter: blur(1px);
+  }
+  #overlay.show { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 </style>
-
 </head>
 
-<body class="bg-gray-100">
-
-<div class="overlay" id="overlay"></div>
-
-<div class="flex h-screen overflow-hidden">
+<body>
+<div id="overlay"></div>
 
 <!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sidebar-header">
+    <div class="brand">
+      <span class="brand-dot"></span> Ashley AI
+    </div>
+  </div>
 
-<div id="sidebar"
-class="sidebar-mobile md:relative md:left-0 md:w-72 bg-white border-r flex flex-col">
+  <div class="search-wrap">
+    <input id="searchChat" placeholder="Search conversations…">
+  </div>
 
-<div class="p-4 border-b flex justify-between items-center">
+  <div class="conv-section-label">Recent</div>
 
-<div class="font-bold text-purple-700">Riya AI</div>
+  <div id="conversationList"></div>
 
-<button id="toggleSidebar" class="md:hidden">
-<i class="fa fa-times"></i>
-</button>
-
-</div>
-
-<div class="p-2">
-<input id="searchChat"
-placeholder="Search..."
-class="w-full border rounded p-2 text-sm">
-</div>
-
-<div id="conversationList"
-class="flex-1 overflow-y-auto p-2 space-y-2">
-</div>
-
+  <div class="sidebar-footer">
+    <button id="newChatBtn">
+      <i class="fa fa-plus" style="font-size:11px"></i> New conversation
+    </button>
+  </div>
 </div>
 
 <!-- MAIN -->
+<div id="main">
+  <div id="header">
+    <button id="menuBtn"><i class="fa fa-bars"></i></button>
+    <div>
+      <div class="header-title">Ashly</div>
+      <div class="header-status">
+        <span class="status-dot"></span>Ready to help
+      </div>
+    </div>
+  </div>
 
-<div class="flex-1 flex flex-col">
+  <div id="chat">
+    <div id="emptyState">
+      <div class="empty-icon">✦</div>
+      <div class="empty-title">Ashly! ,Good to see you.</div>
+      <div class="empty-sub">Ask me anything — I'm here to think alongside you. Coz My Boss Judin wanted the best for you.</div>
+      <div class="suggestions">
+        <div class="suggestion-chip" onclick="fillInput('Summarise something for me')">Summarise something</div>
+        <div class="suggestion-chip" onclick="fillInput('Help me write an email')">Write an email</div>
+        <div class="suggestion-chip" onclick="fillInput('Explain a concept clearly')">Explain a concept</div>
+        <div class="suggestion-chip" onclick="fillInput('Help me brainstorm ideas')">Brainstorm ideas</div>
+      </div>
+    </div>
+  </div>
 
-<!-- HEADER -->
+  <div id="typingRow">
+    <div class="typing-bubble">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+  </div>
 
-<div class="p-4 bg-white border-b flex items-center gap-3">
-
-<button id="openSidebar" class="md:hidden">
-<i class="fa fa-bars"></i>
-</button>
-
-<div class="font-bold text-purple-700 text-lg">
-Riya's AI Assistant
-</div>
-
-<button id="newChatBtn"
-class="ml-auto bg-purple-600 text-white px-3 py-1 rounded">
-+ New
-</button>
-
-</div>
-
-<!-- CHAT -->
-
-<div id="chat"
-class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-</div>
-
-<div id="typing"
-class="px-4 pb-2 text-sm text-gray-500 hidden">
-AI is typing...
-</div>
-
-<!-- INPUT -->
-
-<form id="chatForm"
-class="bg-white border-t p-3 flex gap-2">
-
-<input id="input"
-class="flex-1 border rounded-xl p-3 text-sm"
-placeholder="Message Riya...">
-
-<button class="bg-purple-600 text-white px-4 rounded-xl">
-Send
-</button>
-
-</form>
-
-</div>
-
+  <div id="inputArea">
+    <div id="chatForm">
+      <textarea id="input" placeholder="Message Ashley…" rows="1"></textarea>
+      <button id="sendBtn" type="button">
+        <i class="fa fa-arrow-up"></i>
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
-
-let messages=[]
-let conversationId=null
-
-const chat=document.getElementById("chat")
-const typing=document.getElementById("typing")
-
-const sidebar=document.getElementById("sidebar")
-const overlay=document.getElementById("overlay")
-
-/* -----------------------
-SIDEBAR MOBILE
-------------------------*/
-
-function openSidebar(){
-sidebar.classList.add("open")
-overlay.classList.add("show")
-}
-
-function closeSidebar(){
-sidebar.classList.remove("open")
-overlay.classList.remove("show")
-}
-
-document.getElementById("openSidebar").onclick=openSidebar
-document.getElementById("toggleSidebar").onclick=closeSidebar
-overlay.onclick=closeSidebar
-
-/* -----------------------
-CONVERSATIONS
-------------------------*/
-
-async function newChat(){
-
-const res=await fetch("/conversation/new",{method:"POST"})
-const data=await res.json()
-
-conversationId=data.id
-
-messages=[]
-
-chat.innerHTML=""
-
-refreshConversations()
-
-closeSidebar()
-
-}
-
-async function refreshConversations(){
-
-const res=await fetch("/conversations")
-const list=await res.json()
-
-const container=document.getElementById("conversationList")
-
-container.innerHTML=""
-
-list.forEach(c=>{
-
-const div=document.createElement("div")
-
-div.className="flex justify-between items-center p-2 border rounded hover:bg-gray-100 text-sm"
-
-div.innerHTML=`
-<span class="truncate cursor-pointer"
-onclick="loadConversation('${c.id}')">
-${c.title}
-</span>
-
-<button onclick="deleteConversation('${c.id}')">
-<i class="fa fa-trash text-red-500"></i>
-</button>
-`
-
-container.appendChild(div)
-
-})
-
-}
-
-async function deleteConversation(id){
-
-await fetch("/conversation/"+id,{method:"DELETE"})
-refreshConversations()
-
-}
-
-async function loadConversation(id){
-
-conversationId=id
-
-const res=await fetch("/conversation/"+id)
-const data=await res.json()
-
-messages=data.messages
-
-chat.innerHTML=""
-
-messages.forEach(m=>{
-addBubble(m.role,m.content)
-})
-
-closeSidebar()
-
-}
-
-/* -----------------------
-CHAT UI
-------------------------*/
-
-function addBubble(role,text){
-
-const div=document.createElement("div")
-
-div.className="chat-bubble "+(role==="user"?"user":"assistant")
-
-div.innerHTML=marked.parse(text)
-
-chat.appendChild(div)
-
-chat.scrollTop=chat.scrollHeight
-
-return div
-
-}
-
-function typingOn(){
-typing.classList.remove("hidden")
-}
-
-function typingOff(){
-typing.classList.add("hidden")
-}
-
-/* -----------------------
-SEND MESSAGE
-------------------------*/
-
-async function sendMessage(e){
-
-e.preventDefault()
-
-const input=document.getElementById("input")
-const text=input.value.trim()
-
-if(!text)return
-
-addBubble("user",text)
-
-messages.push({role:"user",content:text})
-
-input.value=""
-
-typingOn()
-
-const assistantBubble=addBubble("assistant","")
-
-const res=await fetch("/chat",{
-
-method:"POST",
-headers:{"Content-Type":"application/json"},
-
-body:JSON.stringify({
-conversation_id:conversationId,
-messages:messages
-})
-
-})
-
-const reader=res.body.getReader()
-const decoder=new TextDecoder()
-
-let buffer=""
-let fullMessage=""
-
-while(true){
-
-const {done,value}=await reader.read()
-
-if(done)break
-
-buffer+=decoder.decode(value,{stream:true})
-
-const parts=buffer.split("\n\n")
-buffer=parts.pop()
-
-for(const p of parts){
-
-if(p.startsWith("data: ")){
-
-const payload=p.slice(6)
-
-if(payload==="[DONE]")continue
-
-const parsed=JSON.parse(payload)
-
-fullMessage+=parsed.content
-
-assistantBubble.innerHTML=marked.parse(fullMessage)
-
-chat.scrollTop=chat.scrollHeight
-
-}
-
-}
-
-}
-
-typingOff()
-
-messages.push({
-role:"assistant",
-content:assistantBubble.innerText
-})
-
-refreshConversations()
-
-}
-
-/* -----------------------
-SEARCH
-------------------------*/
-
-document.getElementById("searchChat")
-.addEventListener("input",e=>{
-
-const query=e.target.value.toLowerCase()
-
-const items=[...document.querySelectorAll("#conversationList div")]
-
-items.forEach(i=>{
-const text=i.innerText.toLowerCase()
-i.style.display=text.includes(query)?"flex":"none"
-})
-
-})
-
-document.getElementById("chatForm")
-.addEventListener("submit",sendMessage)
-
-document.getElementById("newChatBtn")
-.addEventListener("click",newChat)
-
-window.onload=()=>{
-newChat()
-refreshConversations()
-}
-
+  let messages = []
+  let conversationId = null
+
+  const chatEl = document.getElementById('chat')
+  const typingRow = document.getElementById('typingRow')
+  const inputEl = document.getElementById('input')
+  const sidebar = document.getElementById('sidebar')
+  const overlay = document.getElementById('overlay')
+  const emptyState = document.getElementById('emptyState')
+
+  // Auto-resize textarea
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto'
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px'
+  })
+
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  })
+
+  document.getElementById('sendBtn').onclick = sendMessage
+
+  // Sidebar
+  function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('show') }
+  function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show') }
+  document.getElementById('menuBtn').onclick = openSidebar
+  overlay.onclick = closeSidebar
+
+  function fillInput(text) {
+    inputEl.value = text
+    inputEl.focus()
+  }
+
+  function getTime() {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  function addBubble(role, text) {
+    if (emptyState.parentNode === chatEl) chatEl.removeChild(emptyState)
+
+    const row = document.createElement('div')
+    row.className = `msg-row ${role}`
+
+    const bubble = document.createElement('div')
+    bubble.className = `bubble ${role}`
+    if (text) bubble.innerHTML = marked.parse(text)
+
+    const time = document.createElement('div')
+    time.className = 'msg-time'
+    time.textContent = getTime()
+
+    row.appendChild(bubble)
+    row.appendChild(time)
+    chatEl.appendChild(row)
+    chatEl.scrollTop = chatEl.scrollHeight
+
+    return bubble
+  }
+
+  async function newChat() {
+    const res = await fetch('/conversation/new', { method: 'POST' })
+    const data = await res.json()
+    conversationId = data.id
+    messages = []
+    chatEl.innerHTML = ''
+    chatEl.appendChild(emptyState)
+    refreshConversations()
+    closeSidebar()
+  }
+
+  async function refreshConversations() {
+    const res = await fetch('/conversations')
+    const list = await res.json()
+    const container = document.getElementById('conversationList')
+    container.innerHTML = ''
+    list.forEach(c => {
+      const div = document.createElement('div')
+      div.className = 'conv-item'
+      div.innerHTML = `
+        <span class="conv-title" onclick="loadConversation('${c.id}')">${c.title}</span>
+        <button class="conv-del" onclick="deleteConversation('${c.id}')">
+          <i class="fa fa-xmark"></i>
+        </button>`
+      container.appendChild(div)
+    })
+  }
+
+  async function deleteConversation(id) {
+    await fetch('/conversation/' + id, { method: 'DELETE' })
+    refreshConversations()
+  }
+
+  async function loadConversation(id) {
+    conversationId = id
+    const res = await fetch('/conversation/' + id)
+    const data = await res.json()
+    messages = data.messages
+    chatEl.innerHTML = ''
+    messages.forEach(m => addBubble(m.role, m.content))
+    closeSidebar()
+  }
+
+  async function sendMessage() {
+    const text = inputEl.value.trim()
+    if (!text) return
+
+    addBubble('user', text)
+    messages.push({ role: 'user', content: text })
+    inputEl.value = ''
+    inputEl.style.height = 'auto'
+
+    typingRow.style.display = 'flex'
+    chatEl.scrollTop = chatEl.scrollHeight
+
+    const assistantBubble = addBubble('assistant', '')
+    typingRow.style.display = 'none'
+
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversation_id: conversationId, messages })
+    })
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = '', fullMessage = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop()
+      for (const p of parts) {
+        if (p.startsWith('data: ')) {
+          const payload = p.slice(6)
+          if (payload === '[DONE]') continue
+          const parsed = JSON.parse(payload)
+          fullMessage += parsed.content
+          assistantBubble.innerHTML = marked.parse(fullMessage)
+          chatEl.scrollTop = chatEl.scrollHeight
+        }
+      }
+    }
+
+    messages.push({ role: 'assistant', content: assistantBubble.innerText })
+    refreshConversations()
+  }
+
+  document.getElementById('searchChat').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase()
+    document.querySelectorAll('.conv-item').forEach(i => {
+      i.style.display = i.innerText.toLowerCase().includes(q) ? 'flex' : 'none'
+    })
+  })
+
+  document.getElementById('newChatBtn').addEventListener('click', newChat)
+  window.onload = () => { newChat(); refreshConversations() }
 </script>
-
 </body>
 </html>

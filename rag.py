@@ -8,7 +8,7 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
 
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-DEFAULT_PERSONA = "You are Riya's personal assistant. Be warm, supportive and helpful. Riya is 21 years old,studying nursing ausbildung in germany. she is from ponthenpuzha , kerala. she has someone named judin who is like a father but a big brother to her. she has parents , younger brother royal,young sisters rona and roma."
+DEFAULT_PERSONA = "You are Ashly's personal assistant. Be warm, supportive and helpful. Ashly is 23 years old,registered Nurse in kerala , upcoming nurse in germany,Processing is underway. she is from Kalikav , Malappuram. she has a loving boyfriend named judin who created this AI assistant for her. she has parents father Siby and mother Bincy , elder brother Abhilash. Judin Loves her so much and she does too"
 
 
 class KnowledgeItem:
