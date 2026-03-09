@@ -3,6 +3,7 @@ import json
 import base64
 from io import BytesIO
 from uuid import uuid4
+from pathlib import Path
 
 from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -10,26 +11,43 @@ from fastapi.templating import Jinja2Templates
 
 from dotenv import load_dotenv
 from pypdf import PdfReader
-
 from openai import AsyncOpenAI
 
 from rag import rag_manager
 from web_search import search_web
 
+# -----------------------
+# ENV
+# -----------------------
+
 load_dotenv()
 
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+
+if not OPENAI_KEY:
+    raise RuntimeError("OPENAI_API_KEY not found")
+
+client = AsyncOpenAI(api_key=OPENAI_KEY)
+
+# -----------------------
+# PATH FIX (IMPORTANT FOR VERCEL)
+# -----------------------
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# -----------------------
+# FASTAPI
+# -----------------------
+
 app = FastAPI()
-
-templates = Jinja2Templates(directory="templates")
-
-client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # -----------------------
 # MEMORY STORAGE
 # -----------------------
 
 conversations = {}
-
 
 # -----------------------
 # SMART WEB SEARCH
@@ -57,7 +75,6 @@ def needs_web_search(query, rag_results):
 
     return any(k in q for k in keywords)
 
-
 # -----------------------
 # HOME
 # -----------------------
@@ -69,7 +86,6 @@ async def home(request: Request):
         "index.html",
         {"request": request}
     )
-
 
 # -----------------------
 # CONVERSATIONS
@@ -87,7 +103,6 @@ async def new_conversation():
 
     return {"id": cid}
 
-
 @app.get("/conversations")
 async def list_conversations():
 
@@ -96,12 +111,10 @@ async def list_conversations():
         for cid, c in conversations.items()
     ]
 
-
 @app.get("/conversation/{cid}")
 async def get_conversation(cid: str):
 
     return conversations.get(cid, {"messages": []})
-
 
 @app.delete("/conversation/{cid}")
 async def delete_conversation(cid: str):
@@ -110,7 +123,6 @@ async def delete_conversation(cid: str):
         del conversations[cid]
 
     return {"success": True}
-
 
 # -----------------------
 # KNOWLEDGE BASE
@@ -121,14 +133,12 @@ async def list_knowledge():
 
     return rag_manager.list_knowledge()
 
-
 @app.delete("/knowledge/{kid}")
 async def delete_knowledge(kid: str):
 
     rag_manager.delete_knowledge(kid)
 
     return {"success": True}
-
 
 # -----------------------
 # FILE UPLOAD
@@ -138,7 +148,6 @@ async def delete_knowledge(kid: str):
 async def upload(file: UploadFile = File(...)):
 
     content = await file.read()
-
     text = ""
 
     if file.content_type == "application/pdf":
@@ -178,13 +187,11 @@ async def upload(file: UploadFile = File(...)):
         text = response.choices[0].message.content or ""
 
     else:
-
         text = content.decode()
 
     await rag_manager.add_knowledge(text)
 
     return {"success": True}
-
 
 # -----------------------
 # PERSONA
@@ -195,14 +202,12 @@ async def get_persona():
 
     return {"persona": await rag_manager.get_persona()}
 
-
 @app.post("/persona")
 async def update_persona(persona: str = Form(...)):
 
     await rag_manager.set_persona(persona)
 
     return {"success": True}
-
 
 # -----------------------
 # CHAT
@@ -214,13 +219,11 @@ async def chat(request: Request):
     data = await request.json()
 
     cid = data["conversation_id"]
-
     messages = data["messages"][-6:]
 
     last_query = messages[-1]["content"]
 
     if cid not in conversations:
-
         conversations[cid] = {
             "title": "New Chat",
             "messages": []
@@ -237,21 +240,15 @@ async def chat(request: Request):
         title_resp = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {
-                    "role": "system",
-                    "content": "Create a short conversation title (max 4 words)"
-                },
-                {
-                    "role": "user",
-                    "content": messages[0]["content"]
-                }
+                {"role": "system", "content": "Create a short conversation title (max 4 words)"},
+                {"role": "user", "content": messages[0]["content"]}
             ]
         )
 
         conversations[cid]["title"] = title_resp.choices[0].message.content
 
     # -----------------------
-    # RAG RETRIEVAL
+    # RAG
     # -----------------------
 
     rag_results = await rag_manager.retrieve_relevant(last_query)
@@ -259,7 +256,6 @@ async def chat(request: Request):
     web_results = ""
 
     if needs_web_search(last_query, rag_results):
-
         web_results = await search_web(last_query)
 
     persona = await rag_manager.get_persona()
@@ -270,8 +266,7 @@ async def chat(request: Request):
 {persona}
 
 Respond only to the latest user question.
-Explain whenever needed. Answer in detail or briefly depending on the question. Use the web results and relevant knowledge when needed, but don't just repeat them. Use your own words and reasoning.
-Do not repeat the past conversation messages, only use the latest question and the retrieved context to answer. Refer to past conversation messages only if needed.
+Explain when needed.
 
 Latest web information:
 {web_results}
@@ -281,7 +276,7 @@ Relevant knowledge:
 """
 
     # -----------------------
-    # STREAM RESPONSE
+    # STREAM
     # -----------------------
 
     async def stream():
@@ -308,5 +303,9 @@ Relevant knowledge:
         stream(),
         media_type="text/event-stream"
     )
+
+# -----------------------
+# VERCEL HANDLER
+# -----------------------
 
 handler = app
