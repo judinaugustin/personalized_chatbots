@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Riya AI</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+<style>
+
+.chat-bubble{
+max-width:70%;
+padding:14px;
+border-radius:16px;
+white-space:pre-wrap;
+}
+
+.user{
+background:#7c3aed;
+color:white;
+margin-left:auto;
+}
+
+.assistant{
+background:#f3f4f6;
+}
+
+.typing{
+opacity:.6;
+font-style:italic;
+}
+
+.sidebar-collapsed{
+width:60px!important;
+}
+
+</style>
+
+</head>
+
+<body class="bg-gray-100">
+
+<div class="flex h-screen">
+
+<!-- SIDEBAR -->
+
+<div id="sidebar"
+class="w-72 bg-white border-r flex flex-col transition-all">
+
+<div class="p-4 border-b flex justify-between items-center">
+
+<button id="toggleSidebar">
+<i class="fa fa-bars"></i>
+</button>
+
+<button id="newChatBtn"
+class="bg-purple-600 text-white px-3 py-1 rounded">
++ New
+</button>
+
+</div>
+
+<div class="p-2">
+<input id="searchChat"
+placeholder="Search..."
+class="w-full border rounded p-2 text-sm">
+</div>
+
+<div id="conversationList"
+class="flex-1 overflow-y-auto p-2 space-y-2">
+</div>
+
+<div class="p-4 border-t text-sm text-gray-500">
+Riya AI
+</div>
+
+</div>
+
+<!-- MAIN -->
+
+<div class="flex-1 flex flex-col">
+
+<div class="p-4 bg-white border-b flex justify-between">
+
+<div class="font-bold text-purple-700 text-lg">
+Riya's AI Assistant
+</div>
+
+<button id="personaBtn"
+class="text-sm border px-3 py-1 rounded">
+Persona
+</button>
+
+</div>
+
+<div id="chat"
+class="flex-1 overflow-y-auto p-6 space-y-4">
+</div>
+
+<div id="typing"
+class="px-6 pb-2 text-sm text-gray-500 hidden">
+AI is typing...
+</div>
+
+<form id="chatForm"
+class="bg-white border-t p-4 flex gap-3">
+
+<input id="input"
+class="flex-1 border rounded-xl p-3"
+placeholder="Message Riya...">
+
+<button class="bg-purple-600 text-white px-5 rounded-xl">
+Send
+</button>
+
+</form>
+
+</div>
+
+</div>
+
+<script>
+
+let messages=[]
+let conversationId=null
+
+const chat=document.getElementById("chat")
+
+const typing=document.getElementById("typing")
+
+/* -----------------------
+CONVERSATIONS
+------------------------*/
+
+async function newChat(){
+
+const res=await fetch("/conversation/new",{method:"POST"})
+const data=await res.json()
+
+conversationId=data.id
+
+messages=[]
+
+chat.innerHTML=""
+
+refreshConversations()
+
+}
+
+async function refreshConversations(){
+
+const res=await fetch("/conversations")
+
+const list=await res.json()
+
+const container=document.getElementById("conversationList")
+
+container.innerHTML=""
+
+list.forEach(c=>{
+
+const div=document.createElement("div")
+
+div.className="flex justify-between items-center p-2 border rounded hover:bg-gray-100"
+
+div.innerHTML=`
+<span class="truncate cursor-pointer"
+onclick="loadConversation('${c.id}')">
+${c.title}
+</span>
+
+<button onclick="deleteConversation('${c.id}')">
+<i class="fa fa-trash text-red-500"></i>
+</button>
+`
+
+container.appendChild(div)
+
+})
+
+}
+
+async function deleteConversation(id){
+
+await fetch("/conversation/"+id,{method:"DELETE"})
+
+refreshConversations()
+
+}
+
+async function loadConversation(id){
+
+conversationId=id
+
+const res=await fetch("/conversation/"+id)
+
+const data=await res.json()
+
+messages=data.messages
+
+chat.innerHTML=""
+
+messages.forEach(m=>{
+
+addBubble(m.role,m.content)
+
+})
+
+}
+
+/* -----------------------
+CHAT UI
+------------------------*/
+
+function addBubble(role,text){
+
+const div=document.createElement("div")
+
+div.className="chat-bubble "+(role==="user"?"user":"assistant")
+
+div.innerHTML=marked.parse(text)
+
+chat.appendChild(div)
+
+chat.scrollTop=chat.scrollHeight
+
+return div
+
+}
+
+function typingOn(){
+typing.classList.remove("hidden")
+}
+
+function typingOff(){
+typing.classList.add("hidden")
+}
+
+/* -----------------------
+SEND MESSAGE
+------------------------*/
+
+async function sendMessage(e){
+
+e.preventDefault()
+
+const input=document.getElementById("input")
+
+const text=input.value.trim()
+
+if(!text)return
+
+addBubble("user",text)
+
+messages.push({role:"user",content:text})
+
+input.value=""
+
+typingOn()
+
+const assistantBubble=addBubble("assistant","")
+
+const res=await fetch("/chat",{
+
+method:"POST",
+
+headers:{"Content-Type":"application/json"},
+
+body:JSON.stringify({
+conversation_id:conversationId,
+messages:messages
+})
+
+})
+
+const reader=res.body.getReader()
+
+const decoder=new TextDecoder()
+
+let buffer=""
+let fullMessage=""
+
+while(true){
+
+const {done,value}=await reader.read()
+
+if(done)break
+
+buffer+=decoder.decode(value,{stream:true})
+
+const parts=buffer.split("\n\n")
+
+buffer=parts.pop()
+
+for(const p of parts){
+
+if(p.startsWith("data: ")){
+
+const payload=p.slice(6)
+
+if(payload==="[DONE]")continue
+
+const parsed=JSON.parse(payload)
+
+fullMessage+=parsed.content
+
+assistantBubble.innerHTML=marked.parse(fullMessage)
+
+chat.scrollTop=chat.scrollHeight
+
+}
+
+}
+
+}
+
+typingOff()
+
+messages.push({
+role:"assistant",
+content:assistantBubble.innerText
+})
+
+refreshConversations()
+
+}
+
+/* -----------------------
+SEARCH CONVERSATIONS
+------------------------*/
+
+document.getElementById("searchChat")
+.addEventListener("input",async e=>{
+
+const query=e.target.value.toLowerCase()
+
+const items=[...document.querySelectorAll("#conversationList div")]
+
+items.forEach(i=>{
+
+const text=i.innerText.toLowerCase()
+
+i.style.display=text.includes(query)?"flex":"none"
+
+})
+
+})
+
+/* -----------------------
+SIDEBAR TOGGLE
+------------------------*/
+
+document.getElementById("toggleSidebar")
+.addEventListener("click",()=>{
+
+document.getElementById("sidebar")
+.classList.toggle("sidebar-collapsed")
+
+})
+
+/* -----------------------
+EVENTS
+------------------------*/
+
+document.getElementById("chatForm")
+.addEventListener("submit",sendMessage)
+
+document.getElementById("newChatBtn")
+.addEventListener("click",newChat)
+
+window.onload=()=>{
+
+newChat()
+
+refreshConversations()
+
+}
+
+</script>
+
+</body>
+</html>
